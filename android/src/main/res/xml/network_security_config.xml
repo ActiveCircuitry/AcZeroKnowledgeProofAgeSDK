@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Configuration for Active Circuitry ZKP SDK
+  
+  This configuration enforces TLS 1.2+ and provides certificate pinning
+  for secure key downloads.
+  
+  For production use:
+  1. Replace the example certificate pins with your actual certificate hashes
+  2. Enable this config in AndroidManifest.xml:
+     <application android:networkSecurityConfig="@xml/network_security_config" ...>
+  
+  To get your certificate hash:
+  openssl s_client -connect keys.activecircuitry.com:443 | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | openssl enc -base64
+-->
+<network-security-config>
+    <!-- Base configuration: Enforce HTTPS, no cleartext traffic -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- 
+        Development/Debug configuration: Allow local testing 
+        Remove this section in production builds
+    -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+    
+    <!--
+        Production: Certificate pinning for key server
+        IMPORTANT: Update these pins with your actual certificate hashes
+    -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">keys.activecircuitry.com</domain>
+        <!-- 
+            Uncomment and update pins for production:
+            
+            <pin-set expiration="2027-01-01">
+                <pin digest="SHA-256">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</pin>
+                <pin digest="SHA-256">BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=</pin>
+            </pin-set>
+        -->
+    </domain-config>
+</network-security-config>

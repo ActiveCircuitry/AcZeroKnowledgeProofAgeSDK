@@ -1,0 +1,109 @@
+# .gitignore for Active Circuitry ZKP Age SDK
+
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
+# Android
+*.iml
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+android/.gradle
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/*/build/
+android/.idea/
+android/.cxx/
+
+# iOS (for future support)
+ios/.generated/
+ios/Flutter/.last_build_id
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+
+# NDK/JNI
+*.so
+*.a
+*.o
+*.obj
+cpp/build/
+
+# Circom circuits
+circuits/build/
+circuits/*.r1cs
+circuits/*.wasm
+circuits/*.zkey
+circuits/*.json
+circuits/powersoftau_*.ptau
+circuits/*.sym
+
+# Cryptographic keys (NEVER commit real keys)
+*.key
+*.pem
+*.p12
+*_key.*
+proving_key_*
+verification_key_*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test coverage
+coverage/
+*.lcov
+
+# Documentation
+doc/api/
+.dartdoc
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+
+# Distribution
+*.aar
+*.jar
+*.apk
+*.aab
+
+# Benchmarks results
+benchmarks/results/*.json
+
+# Example app specific
+example/.flutter-plugins
+example/.flutter-plugins-dependencies
+example/build/
