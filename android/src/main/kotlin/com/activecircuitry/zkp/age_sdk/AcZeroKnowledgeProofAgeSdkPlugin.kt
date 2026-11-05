@@ -40,10 +40,6 @@ class AcZeroKnowledgeProofAgeSdkPlugin: FlutterPlugin, MethodCallHandler {
         const val METHOD_CHANNEL = "ac_zero_knowledge_proof_age_sdk"
         const val EVENT_CHANNEL = "ac_zero_knowledge_proof_age_sdk/progress"
         const val SDK_VERSION = "0.1.0"
-        
-        init {
-            System.loadLibrary("ac_zkp_native")
-        }
     }
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -59,6 +55,15 @@ class AcZeroKnowledgeProofAgeSdkPlugin: FlutterPlugin, MethodCallHandler {
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+        if (call.method in disabledBackendMethods) {
+            result.error(
+                "CRYPTO_BACKEND_UNAVAILABLE",
+                "Proof and key operations are disabled until a trusted credential backend is configured.",
+                null
+            )
+            return
+        }
+
         when (call.method) {
             "generateAgeProof" -> handleGenerateAgeProof(call, result)
             "verifyAgeProof" -> handleVerifyAgeProof(call, result)
@@ -85,6 +90,27 @@ class AcZeroKnowledgeProofAgeSdkPlugin: FlutterPlugin, MethodCallHandler {
             else -> result.notImplemented()
         }
     }
+
+    private val disabledBackendMethods = setOf(
+        "generateAgeProof",
+        "verifyAgeProof",
+        "validateProofStructure",
+        "estimateProofTime",
+        "estimateVerificationTime",
+        "initializeKeys",
+        "hasProvingKey",
+        "hasVerificationKey",
+        "downloadProvingKey",
+        "downloadVerificationKey",
+        "generateKeys",
+        "deleteKeys",
+        "getProvingKeySize",
+        "getVerificationKeySize",
+        "isHardwareBackedStorage",
+        "exportVerificationKey",
+        "importVerificationKey",
+        "getKeyInfo"
+    )
 
     private fun handleGenerateAgeProof(call: MethodCall, result: Result) {
         coroutineScope.launch {

@@ -5,15 +5,24 @@
  */
 
 import 'dart:typed_data';
+import 'package:flutter/services.dart' as services;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ac_zero_knowledge_proof_age_sdk/ac_zero_knowledge_proof_age_sdk.dart';
+import 'support/fake_ac_zkp_platform.dart';
 
 void main() {
   group('KeyManager', () {
     late KeyManager keyManager;
+    late AcZkpPlatformInterface originalPlatform;
 
     setUp(() {
+      originalPlatform = AcZkpPlatformInterface.instance;
+      installFakeAcZkpPlatform();
       keyManager = KeyManager();
+    });
+
+    tearDown(() {
+      AcZkpPlatformInterface.instance = originalPlatform;
     });
 
     test('initialize completes without error', () async {
@@ -23,11 +32,32 @@ void main() {
       );
     });
 
+    test('backend unavailable is reported during initialization', () async {
+      final fakePlatform = FakeAcZkpPlatform()
+        ..keyInitializationFailure = services.PlatformException(
+          code: 'CRYPTO_BACKEND_UNAVAILABLE',
+          message: 'No cryptographic backend is configured.',
+        );
+      AcZkpPlatformInterface.instance = fakePlatform;
+      keyManager = KeyManager();
+
+      await expectLater(
+        keyManager.initialize(),
+        throwsA(
+          isA<ZkpException>().having(
+            (error) => error.code,
+            'code',
+            'CRYPTO_BACKEND_UNAVAILABLE',
+          ),
+        ),
+      );
+    });
+
     test('throws exception if not initialized', () {
       final uninitializedManager = KeyManager();
 
       expect(
-        () => uninitializedManager.hasProvingKey(),
+        uninitializedManager.hasProvingKey(),
         throwsA(isA<ZkpException>()),
       );
     });
@@ -72,19 +102,19 @@ void main() {
 
     test('exportVerificationKey returns bytes', () async {
       await keyManager.initialize();
-      
+
       // Generate keys first
       await keyManager.generateKeys();
-      
+
       final keyData = await keyManager.exportVerificationKey();
       expect(keyData, isA<Uint8List>());
     });
 
     test('importVerificationKey accepts byte data', () async {
       await keyManager.initialize();
-      
+
       final testData = Uint8List.fromList([1, 2, 3, 4, 5]);
-      
+
       await expectLater(
         keyManager.importVerificationKey(testData),
         completes,

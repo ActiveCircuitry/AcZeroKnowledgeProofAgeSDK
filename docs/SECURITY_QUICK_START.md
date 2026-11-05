@@ -1,215 +1,26 @@
-# Security Quick Reference
+# Security Quick Start
 
-## TL;DR for Developers
+## Current status
 
-### Development (Default - Ready to Use)
-```dart
-// ✅ Just works - no configuration needed
-final generator = AgeProofGenerator();
-final proof = await generator.generateAgeProof(
-  birthDate: DateTime(1990, 1, 1),
-  minimumAge: 18,
-);
-```
+This package is an experimental integration foundation, not a production age
+verification solution. It has no provider adapter, credential signature
+verifier, trusted issuer keys, or encrypted credential store.
 
-### Production (2 Lines to Secure)
-```kotlin
-// In your Application.onCreate() - That's it!
-ZkpKeyManager.allowMockKeys = false        // Line 1: Disable test keys
-ZkpKeyManager.enableCertificatePinning = true  // Line 2: Enable security
-```
+The legacy Android proof and key-management operations return
+`CRYPTO_BACKEND_UNAVAILABLE`. Do not work around this error or re-enable the
+simulated backend.
 
----
+## Before production use
 
-## Security Features (All Optional, Pick What You Need)
+1. Select an approved provider for each target market.
+2. Implement signature and trust-chain verification using the provider's
+   documented credential format.
+3. Implement encrypted storage with protected encryption keys.
+4. Validate expiry and status freshness against the provider's policy. The SDK
+   policy caps offline status freshness at 30 days, but device-clock checks
+   cannot prevent clock rollback on a modified client.
+5. Add negative tests, provider sandbox tests, and an independent security and
+   privacy review.
 
-| Feature | Dev Default | Prod Recommended | Complexity |
-|---------|-------------|------------------|------------|
-| **Mock Keys Protection** | ✅ Enabled | ❌ Disabled | 🟢 Easy |
-| **HTTPS Enforcement** | ✅ Always On | ✅ Always On | 🟢 Easy |
-| **Certificate Pinning** | ❌ Off | ✅ On | 🟡 Medium |
-| **Key Integrity Check** | ❌ Optional | ⭐ Recommended | 🟡 Medium |
-| **Network Security Config** | ❌ Optional | ⭐ Recommended | 🟢 Easy |
-
----
-
-## 30-Second Production Setup
-
-### Step 1: Disable Mock Keys (Required)
-```kotlin
-// Application.kt
-class MyApp : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        ZkpKeyManager.allowMockKeys = false  // ⚠️ IMPORTANT
-    }
-}
-```
-
-### Step 2: Enable Certificate Pinning (Recommended)
-```kotlin
-ZkpKeyManager.enableCertificatePinning = true
-```
-
-### Step 3: Done! 🎉
-Your app is now production-ready with secure configuration.
-
----
-
-## Advanced: Build-Variant Auto-Configuration
-
-### One-Time Setup in build.gradle:
-```gradle
-android {
-    buildTypes {
-        debug {
-            buildConfigField "boolean", "ALLOW_MOCK_KEYS", "true"
-        }
-        release {
-            buildConfigField "boolean", "ALLOW_MOCK_KEYS", "false"
-        }
-    }
-}
-```
-
-### Auto-Configure in Application:
-```kotlin
-ZkpKeyManager.allowMockKeys = BuildConfig.ALLOW_MOCK_KEYS  // Auto!
-```
-
----
-
-## What Happens if You Forget?
-
-### ⚠️ Mock Keys in Production
-```
-SecurityException: Mock keys are disabled. 
-Please configure proper key downloads.
-```
-**Solution**: Check your key server is accessible or enable `allowMockKeys` for testing
-
-### ⚠️ Key Download Fails
-```
-Exception: Failed to download proving key: HTTP 404
-```
-**Solution**: 
-- Verify internet connection
-- Check server URL configuration
-- In development, mock keys will be used automatically (with warning)
-
----
-
-## Security Checklist (Copy-Paste Ready)
-
-```kotlin
-// ✅ Production Pre-Flight Check
-fun verifyProductionSecurity() {
-    check(!ZkpKeyManager.allowMockKeys) { 
-        "❌ FAIL: Mock keys enabled in production!" 
-    }
-    check(ZkpKeyManager.enableCertificatePinning) { 
-        "⚠️ WARNING: Certificate pinning disabled" 
-    }
-    println("✅ Production security verified")
-}
-```
-
----
-
-## Common Patterns
-
-### Pattern 1: Auto-Configure by Build Type
-```kotlin
-when (BuildConfig.BUILD_TYPE) {
-    "debug" -> configureForDev()
-    "release" -> configureForProduction()
-}
-
-fun configureForDev() {
-    ZkpKeyManager.allowMockKeys = true
-    ZkpKeyManager.enableCertificatePinning = false
-}
-
-fun configureForProduction() {
-    ZkpKeyManager.allowMockKeys = false
-    ZkpKeyManager.enableCertificatePinning = true
-}
-```
-
-### Pattern 2: Flavor-Based Configuration
-```kotlin
-// productionFlavor
-ZkpKeyManager.allowMockKeys = false
-
-// stagingFlavor  
-ZkpKeyManager.allowMockKeys = true  // Allow fallback
-```
-
-### Pattern 3: Remote Config
-```kotlin
-// Fetch from Firebase Remote Config or similar
-val config = remoteConfig.getBoolean("zkp_allow_mock_keys")
-ZkpKeyManager.allowMockKeys = config
-```
-
----
-
-## Security Warnings You'll See
-
-### 🟢 Development (Expected)
-```
-⚠️ SECURITY WARNING: Using mock proving key for TESTING ONLY. 
-DO NOT use in production!
-```
-**Action**: None needed in development
-
-### 🔴 Production (Fix Immediately)
-```
-⚠️ SECURITY WARNING: Certificate pinning is disabled
-⚠️ SECURITY WARNING: Mock keys are allowed
-```
-**Action**: Enable security features ASAP
-
----
-
-## Testing Security Configuration
-
-```kotlin
-@Test
-fun `verify production security config`() {
-    // Simulate production build
-    ZkpKeyManager.allowMockKeys = false
-    ZkpKeyManager.enableCertificatePinning = true
-    
-    val keyManager = ZkpKeyManager(context)
-    val info = keyManager.getKeyInfo()
-    val security = info["securityConfig"] as Map<String, Boolean>
-    
-    assertFalse(security["mockKeysAllowed"]!!)
-    assertTrue(security["certificatePinningEnabled"]!!)
-}
-```
-
----
-
-## Need Help?
-
-- 📖 **Full Guide**: [SECURITY_CONFIGURATION.md](SECURITY_CONFIGURATION.md)
-- 🐛 **Issues**: support@activecircuitry.com
-- 🔒 **Security**: security@activecircuitry.com
-
----
-
-## Remember
-
-### ✅ Development First
-- SDK works immediately with sensible defaults
-- Mock keys enable fast testing
-- Security warnings guide you
-
-### 🔒 Production Ready
-- 2 lines of code to secure
-- Automatic safety checks
-- Clear error messages
-
-**Philosophy**: Easy to develop with, hard to mess up in production.
+See [SECURITY_CONFIGURATION.md](SECURITY_CONFIGURATION.md) for security
+requirements and [api.md](api.md) for the current API contracts.

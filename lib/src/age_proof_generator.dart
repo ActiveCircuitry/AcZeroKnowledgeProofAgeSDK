@@ -7,6 +7,7 @@
 /// Author: Zeng Han Jun
 
 import 'dart:async';
+import 'package:flutter/services.dart' as services;
 import 'models/age_proof.dart';
 import 'models/zkp_protocol.dart';
 import 'models/age_threshold.dart';
@@ -64,6 +65,7 @@ class AgeProofGenerator {
 
         return result;
       } on ProofGenerationException catch (e) {
+        if (e.code == 'CRYPTO_BACKEND_UNAVAILABLE') rethrow;
         lastException = e;
         if (attemptCount >= maxRetries) {
           throw ProofGenerationException(
@@ -73,6 +75,17 @@ class AgeProofGenerator {
           );
         }
         // Wait before retry
+        await Future.delayed(retryDelay * attemptCount);
+      } on services.PlatformException catch (e) {
+        if (e.code == 'CRYPTO_BACKEND_UNAVAILABLE') {
+          throw ProofGenerationException(
+            'Cryptographic backend is unavailable: ${e.message}',
+            code: e.code,
+            cause: e,
+          );
+        }
+        lastException = e;
+        if (attemptCount >= maxRetries) break;
         await Future.delayed(retryDelay * attemptCount);
       } catch (e) {
         lastException = Exception(e.toString());
@@ -144,7 +157,7 @@ class AgeProofGenerator {
     ZKPProtocol protocol = ZKPProtocol.groth16,
   }) async {
     final proofs = <AgeProof>[];
-    
+
     for (final age in minimumAges) {
       final proof = await generateAgeProof(
         birthDate: birthDate,
@@ -153,7 +166,7 @@ class AgeProofGenerator {
       );
       proofs.add(proof);
     }
-    
+
     return proofs;
   }
 

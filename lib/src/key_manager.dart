@@ -9,6 +9,7 @@
 
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:flutter/services.dart' as services;
 import 'exceptions/zkp_exception.dart';
 import 'platform/ac_zkp_platform_interface.dart';
 
@@ -35,7 +36,12 @@ class KeyManager {
       await _platform.initializeKeys();
       _initialized = true;
     } catch (e) {
-      throw ZkpException('Failed to initialize key manager: $e');
+      _throwIfBackendUnavailable(e);
+      throw ZkpException(
+        'Failed to initialize key manager: $e',
+        code: e is services.PlatformException ? e.code : null,
+        cause: e,
+      );
     }
   }
 
@@ -45,6 +51,7 @@ class KeyManager {
     try {
       return await _platform.hasProvingKey();
     } catch (e) {
+      _throwIfBackendUnavailable(e);
       return false;
     }
   }
@@ -55,6 +62,7 @@ class KeyManager {
     try {
       return await _platform.hasVerificationKey();
     } catch (e) {
+      _throwIfBackendUnavailable(e);
       return false;
     }
   }
@@ -107,6 +115,7 @@ class KeyManager {
         // Wait before retry (exponential backoff)
         await Future.delayed(Duration(seconds: 2 * attemptCount));
       } catch (e) {
+        _throwIfBackendUnavailable(e);
         lastException = Exception(e.toString());
         if (attemptCount >= maxRetries) break;
         await Future.delayed(Duration(seconds: 2 * attemptCount));
@@ -135,7 +144,12 @@ class KeyManager {
         onProgress: onProgress,
       );
     } catch (e) {
-      throw ZkpException('Failed to download verification key: $e');
+      _throwIfBackendUnavailable(e);
+      throw ZkpException(
+        'Failed to download verification key: $e',
+        code: e is services.PlatformException ? e.code : null,
+        cause: e,
+      );
     }
   }
 
@@ -149,7 +163,12 @@ class KeyManager {
     try {
       await _platform.generateKeys();
     } catch (e) {
-      throw ZkpException('Failed to generate keys: $e');
+      _throwIfBackendUnavailable(e);
+      throw ZkpException(
+        'Failed to generate keys: $e',
+        code: e is services.PlatformException ? e.code : null,
+        cause: e,
+      );
     }
   }
 
@@ -161,7 +180,12 @@ class KeyManager {
     try {
       await _platform.deleteKeys();
     } catch (e) {
-      throw ZkpException('Failed to delete keys: $e');
+      _throwIfBackendUnavailable(e);
+      throw ZkpException(
+        'Failed to delete keys: $e',
+        code: e is services.PlatformException ? e.code : null,
+        cause: e,
+      );
     }
   }
 
@@ -171,6 +195,7 @@ class KeyManager {
     try {
       return await _platform.getProvingKeySize();
     } catch (e) {
+      _throwIfBackendUnavailable(e);
       return 0;
     }
   }
@@ -181,6 +206,7 @@ class KeyManager {
     try {
       return await _platform.getVerificationKeySize();
     } catch (e) {
+      _throwIfBackendUnavailable(e);
       return 0;
     }
   }
@@ -191,6 +217,7 @@ class KeyManager {
     try {
       return await _platform.isHardwareBackedStorage();
     } catch (e) {
+      _throwIfBackendUnavailable(e);
       return false;
     }
   }
@@ -203,7 +230,12 @@ class KeyManager {
     try {
       return await _platform.exportVerificationKey();
     } catch (e) {
-      throw ZkpException('Failed to export verification key: $e');
+      _throwIfBackendUnavailable(e);
+      throw ZkpException(
+        'Failed to export verification key: $e',
+        code: e is services.PlatformException ? e.code : null,
+        cause: e,
+      );
     }
   }
 
@@ -215,7 +247,12 @@ class KeyManager {
     try {
       await _platform.importVerificationKey(keyData);
     } catch (e) {
-      throw ZkpException('Failed to import verification key: $e');
+      _throwIfBackendUnavailable(e);
+      throw ZkpException(
+        'Failed to import verification key: $e',
+        code: e is services.PlatformException ? e.code : null,
+        cause: e,
+      );
     }
   }
 
@@ -225,13 +262,26 @@ class KeyManager {
     try {
       return await _platform.getKeyInfo();
     } catch (e) {
+      _throwIfBackendUnavailable(e);
       return {};
     }
   }
 
   void _ensureInitialized() {
     if (!_initialized) {
-      throw ZkpException('KeyManager not initialized. Call initialize() first.');
+      throw ZkpException(
+          'KeyManager not initialized. Call initialize() first.');
+    }
+  }
+
+  void _throwIfBackendUnavailable(Object error) {
+    if (error is services.PlatformException &&
+        error.code == 'CRYPTO_BACKEND_UNAVAILABLE') {
+      throw KeyManagementException(
+        'Cryptographic backend is unavailable: ${error.message}',
+        code: error.code,
+        cause: error,
+      );
     }
   }
 }

@@ -4,59 +4,33 @@
 [![Platform](https://img.shields.io/badge/platform-Android-green.svg)](https://www.android.com/)
 [![Flutter](https://img.shields.io/badge/Flutter-3.0+-blue.svg)](https://flutter.dev/)
 
-A high-performance Zero-Knowledge Proof (ZKP) library for Flutter applications, enabling privacy-preserving age verification without revealing sensitive user data.
+An experimental Android Flutter SDK prototype for integrating provider-issued
+age credentials.
+
+> **Security notice:** No age-credential provider, signature verifier, or
+> encrypted credential store is integrated yet. Legacy proof and key-management
+> operations fail closed. Do not use this package for production age decisions.
 
 ## Overview
 
-The **Active Circuitry Zero Knowledge Age Verification SDK** allows Android applications to verify user ages using cryptographic proofs, ensuring compliance with age-restricted content regulations while maintaining user privacy.
+The SDK defines provider-neutral interfaces and policy types for integrating
+age-only claims. A user-entered birth date is not treated as verified evidence.
 
 ### Key Features
 
-- 🔐 **Privacy-First**: Verify age without exposing birth dates or identity documents
-- ⚡ **High Performance**: Optimized C++ core with Groth16 and PLONK support
-- 📱 **Android Native**: Deep integration with Android security features (TEE, KeyStore)
-- 🛡️ **Secure**: Hardware-backed key storage and trusted execution environment support
-- 🚀 **Easy Integration**: Simple Flutter API for seamless app integration
-- 📊 **Multiple Proofs**: Support for various age thresholds (13+, 16+, 18+, 21+)
-
-## Supported ZKP Protocols
-
-- **Groth16**: Fast verification, small proof size (~200 bytes)
-- **PLONK**: Universal trusted setup, flexible circuits
-
-## Use Cases
-
-- Age-gated content (social media, dating apps, streaming)
-- E-commerce age verification (alcohol, tobacco, restricted items)
-- Gaming and gambling compliance
-- Educational content filtering
-- Government and healthcare applications
+- **Provider-neutral contracts** for credential acquisition, verification, and storage
+- **Offline policy evaluation** with a maximum 30-day status freshness window
+- **Fail-closed legacy API** while provider integration is pending
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────┐
-│        Flutter Application          │
-└─────────────────┬───────────────────┘
-                  │
-┌─────────────────▼───────────────────┐
-│      Dart API Layer (Public)        │
-│  - AgeProofGenerator                │
-│  - AgeProofVerifier                 │
-│  - KeyManager                       │
-└─────────────────┬───────────────────┘
-                  │
-┌─────────────────▼───────────────────┐
-│    Platform Channel (Method CH)     │
-└────────┬────────────────────┬───────┘
-         │                    │
-┌────────▼────────┐  ┌────────▼────────┐
-│  Android Native │  │   C++ Core      │
-│  (Java/Kotlin)  │  │   (FFI/JNI)     │
-│  - KeyStore     │  │   - Groth16     │
-│  - TEE Support  │  │   - PLONK       │
-└─────────────────┘  │   - Crypto      │
-                     └─────────────────┘
+Flutter app
+    |
+    +-- AgeCredentialProvider (integration contract; no implementation)
+    +-- AgeCredentialVerifier (provider signature verification contract)
+    +-- AgeCredentialStore (secure storage contract; no implementation)
+    +-- AgeCredentialPolicy (issuer, audience, age, expiry, freshness)
 ```
 
 ## Installation
@@ -68,61 +42,25 @@ dependencies:
   ac_zero_knowledge_proof_age_sdk: ^0.1.0
 ```
 
-## Quick Start
+## Current SDK Status
 
-```dart
-import 'package:ac_zero_knowledge_proof_age_sdk/ac_zero_knowledge_proof_age_sdk.dart';
+The legacy proof-generation, proof-verification, and key-management platform
+operations now fail with `CRYPTO_BACKEND_UNAVAILABLE`. The simulated C++ proof
+implementation is no longer built or loaded. Provider-neutral age-credential
+interfaces and offline policy types are available, but no provider adapter,
+signature verifier, or secure credential store is included yet.
 
-// Generate a proof that user is 18+
-final generator = AgeProofGenerator();
-final proof = await generator.generateAgeProof(
-  birthDate: DateTime(1990, 1, 1),
-  minimumAge: 18,
-  protocol: ZKPProtocol.groth16,
-);
-
-// Verify the proof
-final verifier = AgeProofVerifier();
-final isValid = await verifier.verifyAgeProof(proof);
-
-if (isValid) {
-  print('User is verified to be 18 or older');
-}
-```
+Do not treat this version as a working age-verification product. A provider and
+its signed credential format must be selected and integrated before credentials
+can be acquired or verified.
 
 ## Security Configuration
 
-### Development Mode (Default)
-The SDK works out-of-the-box for development:
-```dart
-// No configuration needed - mock keys enabled for easy testing
-final proof = await generator.generateAgeProof(
-  birthDate: DateTime(1990, 1, 1),
-  minimumAge: 18,
-);
-```
-
-### Production Mode
-Configure security features for production:
-
-```kotlin
-// In your Android Application class
-import com.activecircuitry.zkp.age_sdk.ZkpKeyManager
-
-class MyApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        
-        // Disable mock keys in production
-        ZkpKeyManager.allowMockKeys = false
-        
-        // Enable certificate pinning (recommended)
-        ZkpKeyManager.enableCertificatePinning = true
-    }
-}
-```
-
-**📖 See [Security Configuration Guide](docs/SECURITY_CONFIGURATION.md) for complete setup instructions.**
+There is no production security configuration or provider integration yet.
+The previous mock-key and certificate-pinning configuration examples were
+removed because they did not provide the protections they claimed. See the
+[Security Configuration Guide](docs/SECURITY_CONFIGURATION.md) for current
+limitations and planned integration requirements.
 
 ## Requirements
 
@@ -134,7 +72,7 @@ class MyApplication : Application() {
 
 - Minimum SDK: 24 (Android 7.0)
 - Target SDK: 34 (Android 14)
-- NDK: r25c or higher (for C++ components)
+- No NDK is required by the currently enabled credential interfaces
 
 ## Development
 

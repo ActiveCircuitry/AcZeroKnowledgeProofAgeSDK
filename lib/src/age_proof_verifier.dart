@@ -7,6 +7,7 @@
 /// Author: Zeng Han Jun
 
 import 'dart:async';
+import 'package:flutter/services.dart' as services;
 import 'models/age_proof.dart';
 import 'models/proof_result.dart';
 import 'exceptions/zkp_exception.dart';
@@ -46,6 +47,7 @@ class AgeProofVerifier {
         final result = await _platform.verifyAgeProof(proof);
         return result.isValid;
       } on ProofVerificationException catch (e) {
+        if (e.code == 'CRYPTO_BACKEND_UNAVAILABLE') rethrow;
         lastException = e;
         if (attemptCount >= maxRetries) {
           throw ProofVerificationException(
@@ -54,6 +56,17 @@ class AgeProofVerifier {
             cause: e,
           );
         }
+        await Future.delayed(Duration(milliseconds: 500 * attemptCount));
+      } on services.PlatformException catch (e) {
+        if (e.code == 'CRYPTO_BACKEND_UNAVAILABLE') {
+          throw ProofVerificationException(
+            'Cryptographic backend is unavailable: ${e.message}',
+            code: e.code,
+            cause: e,
+          );
+        }
+        lastException = e;
+        if (attemptCount >= maxRetries) break;
         await Future.delayed(Duration(milliseconds: 500 * attemptCount));
       } catch (e) {
         lastException = Exception(e.toString());
@@ -96,8 +109,22 @@ class AgeProofVerifier {
   ///
   /// Returns a [ProofResult] containing validity, protocol info, and metadata.
   Future<ProofResult> verifyAgeProofDetailed(AgeProof proof) async {
+    _validateProof(proof);
     try {
       return await _platform.verifyAgeProof(proof);
+    } on services.PlatformException catch (e) {
+      if (e.code == 'CRYPTO_BACKEND_UNAVAILABLE') {
+        throw ProofVerificationException(
+          'Cryptographic backend is unavailable: ${e.message}',
+          code: e.code,
+          cause: e,
+        );
+      }
+      throw ZkpException(
+        'Failed to verify age proof: $e',
+        code: e.code,
+        cause: e,
+      );
     } catch (e) {
       throw ZkpException('Failed to verify age proof: $e');
     }
@@ -109,12 +136,12 @@ class AgeProofVerifier {
   /// Returns a list of verification results in the same order as input.
   Future<List<bool>> verifyBatchProofs(List<AgeProof> proofs) async {
     final results = <bool>[];
-    
+
     for (final proof in proofs) {
       final isValid = await verifyAgeProof(proof);
       results.add(isValid);
     }
-    
+
     return results;
   }
 

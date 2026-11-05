@@ -39,5 +39,7 @@ export 'src/models/age_proof.dart';
 export 'src/models/zkp_protocol.dart';
 export 'src/models/age_threshold.dart';
 export 'src/models/proof_result.dart';
+export 'src/models/age_credential.dart';
+export 'src/credentials/age_credential_provider.dart';
 export 'src/exceptions/zkp_exception.dart';
 export 'src/platform/ac_zkp_platform_interface.dart';

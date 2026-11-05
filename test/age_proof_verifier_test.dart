@@ -5,17 +5,26 @@
  */
 
 import 'dart:typed_data';
+import 'package:flutter/services.dart' as services;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ac_zero_knowledge_proof_age_sdk/ac_zero_knowledge_proof_age_sdk.dart';
+import 'support/fake_ac_zkp_platform.dart';
 
 void main() {
   group('AgeProofVerifier', () {
     late AgeProofVerifier verifier;
     late AgeProofGenerator generator;
+    late AcZkpPlatformInterface originalPlatform;
 
     setUp(() {
+      originalPlatform = AcZkpPlatformInterface.instance;
+      installFakeAcZkpPlatform();
       verifier = AgeProofVerifier();
       generator = AgeProofGenerator();
+    });
+
+    tearDown(() {
+      AcZkpPlatformInterface.instance = originalPlatform;
     });
 
     test('verifyAgeProof validates correct proof', () async {
@@ -45,6 +54,81 @@ void main() {
       expect(result.isValid, isTrue);
       expect(result.minimumAge, equals(minimumAge));
       expect(result.verificationTimeMs, greaterThan(0));
+    });
+
+    test('verifyAgeProofDetailed rejects an expired proof before platform call',
+        () async {
+      final expiredProof = AgeProof(
+        proofData: Uint8List.fromList([1]),
+        minimumAge: 18,
+        protocol: ZKPProtocol.groth16,
+        generatedAt: DateTime.now().subtract(const Duration(days: 2)),
+        expiresAt: DateTime.now().subtract(const Duration(days: 1)),
+        proofId: 'expired-proof',
+        sdkVersion: 'test',
+      );
+
+      await expectLater(
+        verifier.verifyAgeProofDetailed(expiredProof),
+        throwsA(
+          isA<ProofVerificationException>().having(
+            (error) => error.code,
+            'code',
+            'PROOF_EXPIRED',
+          ),
+        ),
+      );
+    });
+
+    test('verifyAgeProofDetailed rejects an empty proof', () async {
+      final emptyProof = AgeProof(
+        proofData: Uint8List(0),
+        minimumAge: 18,
+        protocol: ZKPProtocol.groth16,
+        generatedAt: DateTime.now(),
+        proofId: 'empty-proof',
+        sdkVersion: 'test',
+      );
+
+      await expectLater(
+        verifier.verifyAgeProofDetailed(emptyProof),
+        throwsA(
+          isA<ProofVerificationException>().having(
+            (error) => error.code,
+            'code',
+            'EMPTY_PROOF',
+          ),
+        ),
+      );
+    });
+
+    test('backend unavailable is propagated without retries', () async {
+      final fakePlatform = FakeAcZkpPlatform()
+        ..verificationFailure = services.PlatformException(
+          code: 'CRYPTO_BACKEND_UNAVAILABLE',
+          message: 'No cryptographic backend is configured.',
+        );
+      AcZkpPlatformInterface.instance = fakePlatform;
+      verifier = AgeProofVerifier();
+      final proof = AgeProof(
+        proofData: Uint8List.fromList([1]),
+        minimumAge: 18,
+        protocol: ZKPProtocol.groth16,
+        generatedAt: DateTime.now(),
+        proofId: 'test-proof',
+        sdkVersion: 'test',
+      );
+
+      await expectLater(
+        verifier.verifyAgeProof(proof),
+        throwsA(
+          isA<ProofVerificationException>().having(
+            (error) => error.code,
+            'code',
+            'CRYPTO_BACKEND_UNAVAILABLE',
+          ),
+        ),
+      );
     });
 
     test('verifyBatchProofs verifies multiple proofs', () async {

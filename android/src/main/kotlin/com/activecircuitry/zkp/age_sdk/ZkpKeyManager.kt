@@ -27,14 +27,6 @@ class ZkpKeyManager(private val context: Context) {
         private const val VERIFICATION_KEY_FILENAME = "verification_key.bin"
         private const val DEFAULT_KEY_URL = "https://keys.activecircuitry.com/zkp/"
         
-        // Security: Enable this in production to enforce certificate pinning
-        var enableCertificatePinning = false
-        
-        // Security: Expected SHA-256 hash of the server certificate (optional)
-        var expectedCertificateHash: String? = null
-        
-        // Security: Allow mock keys in development (disable in production)
-        var allowMockKeys = true
     }
     
     private val keyStore: KeyStore by lazy {
@@ -88,111 +80,18 @@ class ZkpKeyManager(private val context: Context) {
      * Downloads proving key from server.
      */
     fun downloadProvingKey(url: String?) {
-        val downloadUrl = url ?: "${DEFAULT_KEY_URL}proving_key_groth16.bin"
-        
-        try {
-            // Use HttpURLConnection for downloading
-            val connection = java.net.URL(downloadUrl).openConnection() as java.net.HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 30000
-            connection.readTimeout = 30000
-            
-            // Security: Validate HTTPS is used
-            if (!downloadUrl.startsWith("https://")) {
-                throw SecurityException("Key downloads must use HTTPS. URL: $downloadUrl")
-            }
-            
-            connection.connect()
-            
-            if (connection.responseCode == 200) {
-                val keyFile = File(secureKeyDir, PROVING_KEY_FILENAME)
-                connection.inputStream.use { input ->
-                    keyFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-            } else {
-                throw Exception("Failed to download proving key: HTTP ${connection.responseCode}")
-            }
-            
-            connection.disconnect()
-        } catch (e: Exception) {
-            // Fallback: Create a mock proving key for testing
-            val keyFile = File(secureKeyDir, PROVING_KEY_FILENAME)
-            keyFile.writeBytes(generateMockProvingKey())
-        }
-    }
-    
-    private fun generateMockProvingKey(): ByteArray {
-        // Security check: Prevent mock keys in production
-        if (!allowMockKeys) {
-            throw SecurityException(
-                "Mock keys are disabled. Please configure proper key downloads or " +
-                "enable allowMockKeys for testing."
-            )
-        }
-        
-        // Log security warning
-        android.util.Log.w(
-            "ZkpKeyManager",
-            "⚠️ SECURITY WARNING: Using mock proving key for TESTING ONLY. " +
-            "DO NOT use in production!"
+        throw UnsupportedOperationException(
+            "Key downloads are disabled until a provider trust and signed artifact policy is configured."
         )
-        
-        // Generate deterministic mock key for testing (2048 bytes)
-        return ByteArray(2048) { i -> ((i * 7 + 13) % 256).toByte() }
     }
     
     /**
      * Downloads verification key from server.
      */
     fun downloadVerificationKey(url: String?) {
-        val downloadUrl = url ?: "${DEFAULT_KEY_URL}verification_key_groth16.bin"
-        
-        try {
-            val connection = java.net.URL(downloadUrl).openConnection() as java.net.HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 30000
-            connection.readTimeout = 30000
-            connection.connect()
-            
-            if (connection.responseCode == 200) {
-                val keyFile = File(secureKeyDir, VERIFICATION_KEY_FILENAME)
-                connection.inputStream.use { input ->
-                    keyFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-            } else {
-                throw Exception("Failed to download verification key: HTTP ${connection.responseCode}")
-            }
-            
-            connection.disconnect()
-        } catch (e: Exception) {
-            // Fallback: Create a mock verification key for testing
-            val keyFile = File(secureKeyDir, VERIFICATION_KEY_FILENAME)
-            keyFile.writeBytes(generateMockVerificationKey())
-        }
-    }
-    
-    private fun generateMockVerificationKey(): ByteArray {
-        // Security check: Prevent mock keys in production
-        if (!allowMockKeys) {
-            throw SecurityException(
-                "Mock keys are disabled. Please configure proper key downloads or " +
-                "enable allowMockKeys for testing."
-            )
-        }
-        
-        // Log security warning
-        android.util.Log.w(
-            "ZkpKeyManager",
-            "⚠️ SECURITY WARNING: Using mock verification key for TESTING ONLY. " +
-            "DO NOT use in production!"
+        throw UnsupportedOperationException(
+            "Key downloads are disabled until a provider trust and signed artifact policy is configured."
         )
-        
-        // Generate deterministic mock key for testing (1024 bytes)
-        return ByteArray(1024) { i -> ((i * 11 + 17) % 256).toByte() }
     }
     
     /**
@@ -202,26 +101,9 @@ class ZkpKeyManager(private val context: Context) {
      * during trusted setup ceremonies.
      */
     fun generateKeys() {
-        // In production, this would call native C++ key generation via JNI
-        // For now, generate cryptographically-derived mock keys
-        
-        val provingKeyFile = File(secureKeyDir, PROVING_KEY_FILENAME)
-        val verificationKeyFile = File(secureKeyDir, VERIFICATION_KEY_FILENAME)
-        
-        // Generate keys using secure random with circuit-specific derivation
-        val secureRandom = java.security.SecureRandom()
-        
-        // Proving key: larger key with circuit parameters
-        val provingKey = ByteArray(2048)
-        secureRandom.nextBytes(provingKey)
-        provingKeyFile.writeBytes(provingKey)
-        
-        // Verification key: derived from proving key
-        val verificationKey = ByteArray(1024)
-        secureRandom.nextBytes(verificationKey)
-        verificationKeyFile.writeBytes(verificationKey)
-        
-        // In production, would call: nativeGenerateKeys() via JNI
+        throw UnsupportedOperationException(
+            "Trusted setup and key generation must not run in the mobile application."
+        )
     }
     
     /**
@@ -279,16 +161,7 @@ class ZkpKeyManager(private val context: Context) {
      * Checks if hardware-backed storage is available.
      */
     fun isHardwareBackedStorage(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            try {
-                keyStore.load(null)
-                true
-            } catch (e: Exception) {
-                false
-            }
-        } else {
-            false
-        }
+        return false
     }
     
     /**
@@ -307,8 +180,9 @@ class ZkpKeyManager(private val context: Context) {
      * Imports a verification key.
      */
     fun importVerificationKey(keyData: ByteArray) {
-        val keyFile = File(secureKeyDir, VERIFICATION_KEY_FILENAME)
-        keyFile.writeBytes(keyData)
+        throw UnsupportedOperationException(
+            "Key import is disabled until provider trust and artifact validation are configured."
+        )
     }
     
     /**
@@ -340,11 +214,7 @@ class ZkpKeyManager(private val context: Context) {
             "provingKeySize" to getProvingKeySize(),
             "verificationKeySize" to getVerificationKeySize(),
             "hardwareBackedStorage" to isHardwareBackedStorage(),
-            "keyStorageLocation" to secureKeyDir.absolutePath,
-            "securityConfig" to mapOf(
-                "certificatePinningEnabled" to enableCertificatePinning,
-                "mockKeysAllowed" to allowMockKeys
-            )
+            "keyStorageLocation" to secureKeyDir.absolutePath
         )
     }
 }

@@ -69,6 +69,8 @@ flutter test
 - Ensure existing tests pass
 - Add integration tests where appropriate
 - Test on multiple Android versions
+- Add negative tests for invalid, expired, tampered, and unsupported inputs
+- Do not use real identity documents or personal data in fixtures
 
 ## Documentation
 
@@ -80,6 +82,13 @@ flutter test
 
 - Do not commit sensitive data
 - Follow security best practices
+- A user-entered date of birth is not a verified age claim. Age claims must come from an approved, trusted issuer.
+- Do not collect, persist, or log raw identity documents, document numbers, or dates of birth in the SDK unless an approved provider flow explicitly requires temporary handling.
+- Validate issuer signatures, accepted algorithms, issuer and audience, age threshold, expiration, and device binding when provided. Reject invalid or unsupported credentials; never fall back to accepting them.
+- Offline credentials must fail closed after the configured 30-day status-refresh window or their earlier issuer-provided expiration. Document that local checks cannot fully prevent device-clock manipulation or a modified client from bypassing the gate.
+- Simulated proofs and mock keys may only be used in clearly isolated tests or development builds. They must never be treated as valid production credentials.
+- If a ZK proof system is used, perform trusted setup outside the mobile app and authenticate/version its circuit and public parameters. Do not generate or silently substitute production keys at runtime.
+- Add tests for valid credentials and for invalid signatures, unknown issuers, wrong audiences, insufficient age claims, expiration, stale or revoked status, and device-binding failures where applicable.
 - Report security vulnerabilities privately to security@activecircuitry.com
 
 ## License
@@ -88,4 +97,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ## Questions?
 
-Contact: support@activecircuitry.com
+Contact: activecircuitry@gmail.com
